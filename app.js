@@ -13,7 +13,11 @@ function save() {
 
 function render() {
   list.textContent = '';
-  items.forEach((item, i) => {
+  const order = items
+    .map((item, i) => i)
+    .sort((a, b) => items[a].done - items[b].done || a - b);
+  order.forEach((i) => {
+    const item = items[i];
     const li = document.createElement('li');
     li.className = item.done ? 'done' : '';
 
