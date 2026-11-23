@@ -21,25 +21,54 @@ function render() {
     const li = document.createElement('li');
     li.className = item.done ? 'done' : '';
 
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = item.done;
-    cb.onchange = () => { items[i].done = cb.checked; save(); };
+    const mark = document.createElement('span');
+    mark.className = 'mark';
+    mark.textContent = item.done ? '✓' : '';
 
     const span = document.createElement('span');
+    span.className = 'text';
     span.textContent = item.text;
 
-    const del = document.createElement('button');
-    del.className = 'del';
-    del.type = 'button';
-    del.textContent = '✕';
-    del.setAttribute('aria-label', 'Löschen');
-    del.onclick = () => { items.splice(i, 1); save(); };
+    li.append(mark, span);
 
-    li.append(cb, span, del);
+    if (item.done) {
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.type = 'button';
+      del.textContent = '✕';
+      del.setAttribute('aria-label', 'Löschen');
+      del.onclick = (e) => { e.stopPropagation(); items.splice(i, 1); save(); };
+      li.append(del);
+    }
+
+    const toggle = () => { items[i].done = !items[i].done; save(); };
+    let startX = null;
+    let swiped = false;
+    li.onpointerdown = (e) => { startX = e.clientX; swiped = false; };
+    li.onpointermove = (e) => {
+      if (startX === null) return;
+      const dx = Math.max(0, e.clientX - startX);
+      li.style.transform = `translateX(${dx}px)`;
+      if (dx > 80) { swiped = true; startX = null; toggle(); }
+    };
+    li.onpointerup = li.onpointercancel = () => {
+      startX = null;
+      li.style.transform = '';
+    };
+    li.onclick = () => { if (!swiped) toggle(); };
+
     list.append(li);
   });
   empty.hidden = items.length > 0;
+}
+
+function addItems(text) {
+  text
+    .split(/,|\bund\b/i)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .forEach((t) => items.push({ text: t.charAt(0).toUpperCase() + t.slice(1), done: false }));
+  save();
 }
 
 form.onsubmit = (e) => {
@@ -50,6 +79,23 @@ form.onsubmit = (e) => {
   input.value = '';
   save();
 };
+
+const mic = document.getElementById('mic');
+const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!Speech) {
+  mic.hidden = true;
+} else {
+  mic.onclick = () => {
+    const rec = new Speech();
+    rec.lang = 'de-DE';
+    rec.interimResults = false;
+    rec.onstart = () => mic.classList.add('listening');
+    rec.onend = () => mic.classList.remove('listening');
+    rec.onresult = (e) => addItems(e.results[0][0].transcript);
+    rec.onerror = () => mic.classList.remove('listening');
+    rec.start();
+  };
+}
 
 document.getElementById('clear').onclick = () => {
   items = items.filter((i) => !i.done);

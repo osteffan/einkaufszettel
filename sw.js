@@ -1,4 +1,4 @@
-const CACHE = 'einkaufszettel-v2';
+const CACHE = 'einkaufszettel-v3';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'manifest.json', 'icon.svg'];
 
 self.addEventListener('install', (e) => {
