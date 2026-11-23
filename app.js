@@ -85,15 +85,42 @@ const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!Speech) {
   mic.hidden = true;
 } else {
-  mic.onclick = () => {
-    const rec = new Speech();
+  let rec = null;
+  let active = false;
+
+  const stop = () => {
+    active = false;
+    mic.classList.remove('listening');
+    if (rec) rec.stop();
+  };
+
+  const start = () => {
+    rec = new Speech();
     rec.lang = 'de-DE';
+    rec.continuous = true;
     rec.interimResults = false;
-    rec.onstart = () => mic.classList.add('listening');
-    rec.onend = () => mic.classList.remove('listening');
-    rec.onresult = (e) => addItems(e.results[0][0].transcript);
-    rec.onerror = () => mic.classList.remove('listening');
+    rec.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (!e.results[i].isFinal) continue;
+        const text = e.results[i][0].transcript;
+        const m = text.match(/\bstopp?\b/i);
+        addItems(m ? text.slice(0, m.index) : text);
+        if (m) { stop(); return; }
+      }
+    };
+    rec.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') stop();
+    };
+    // Browser beenden die Aufnahme von selbst; solange aktiv, neu starten
+    rec.onend = () => { if (active) start(); };
     rec.start();
+  };
+
+  mic.onclick = () => {
+    if (active) { stop(); return; }
+    active = true;
+    mic.classList.add('listening');
+    start();
   };
 }
 
